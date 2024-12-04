@@ -21,23 +21,24 @@ inline void queryHelper(Node* node, size_t min, size_t max, std::vector<File*>& 
     size_t fileSize = node->size_;
 
     // Traverse left subtree if potential valid files exist
-    if (fileSize >= min) 
-    {
+    if (fileSize >= min) {
         queryHelper(node->left_, min, max, result);
     }
 
-    // Include the current node if its file size is within range
-    if (fileSize >= min && fileSize <= max) 
-    {
-        File* test = node->files_.front();
-        result.push_back(test);
+    // Include all files in the current node if their file size is within the range
+    if (fileSize >= min && fileSize <= max) {
+        // Iterate through all files in the current node
+        for (File* file : node->files_) {
+            result.push_back(file);  // Add the file to the result vector
+        }
     }
+
     // Traverse right subtree if potential valid files exist
-    if (fileSize <= max) 
-    {
+    if (fileSize <= max) {
         queryHelper(node->right_, min, max, result);
     }
 }
+
 
 
 
@@ -57,34 +58,65 @@ std::vector<File*> FileAVL::query(size_t min, size_t max) {
     if (min > max) std::swap(min, max);
 
     // Start the recursive query
-    queryHelper(root, min, max, result);
+    queryHelper(root_, min, max, result);
 
     return result;
 }
 
 
-//-----FileTrie Implementation
 
-    // Default constructor
-FileTrie::FileTrie()
-{
 
-};
+// FileTrie Implementation
 
-    // Add file, ignore case
-void FileTrie::addFile(File* f)
-{
+// // Constructor: Initializes the trie with the root node
+// FileTrie::FileTrie() {
+//     head = new FileTrieNode();  // Root node representing the empty string
+// }
 
-};
+// Adds a file to the trie
+void FileTrie::addFile(File* f) {
 
-        // Search
-std::unordered_set<File*> FileTrie::getFilesWithPrefix(const std::string& prefix) const
-{
 
-};
 
-    // Destructor
-FileTrie::~FileTrie()
-{
+}
 
-};
+// Searches for files with a given prefix
+std::unordered_set<File*> FileTrie::getFilesWithPrefix(const std::string& prefix) const {
+    std::unordered_set<File*> result;
+
+    // Convert the prefix to lowercase for case-insensitive matching
+    std::string lowerPrefix = prefix;
+    for (auto& c : lowerPrefix) {
+        c = std::tolower(c);
+    }
+
+    // Traverse the trie to find the node corresponding to the last character of the prefix
+    FileTrieNode* currentNode = head;
+    for (char c : lowerPrefix) {
+        // If the node doesn't exist, return an empty result
+        if (currentNode->next.find(c) == currentNode->next.end()) {
+            return result;
+        }
+        
+        // Move to the child node
+        currentNode = currentNode->next[c];
+    }
+
+    // At this point, currentNode is the node corresponding to the last character of the prefix
+    // All files starting with this prefix are in currentNode->matching
+    result = currentNode->matching;
+    return result;
+}
+
+// Destructor: Clean up the dynamically allocated memory
+FileTrie::~FileTrie() {
+    // Use a helper function to recursively delete all nodes
+    std::function<void(FileTrieNode*)> deleteNode = [&](FileTrieNode* node) {
+        for (auto& child : node->next) {
+            deleteNode(child.second);  // Recursively delete child nodes
+        }
+        delete node;  // Delete the current node
+    };
+
+    deleteNode(head);  // Start deletion from the root node
+}
