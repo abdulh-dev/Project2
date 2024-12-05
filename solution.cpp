@@ -74,49 +74,55 @@ std::vector<File*> FileAVL::query(size_t min, size_t max) {
 // }
 
 // Adds a file to the trie
-void FileTrie::addFile(File* f) {
+void FileTrie::addFile(File* f) 
+{
+    std::string filename = f->getName(); 
 
+    // Convert filename to lowercase for case-insensitive storage
+    for (char& c : filename) c = std::tolower(c);
 
+    FileTrieNode* current = head; // Start at the root
 
+    for (char c : filename) {
+        // Insert the file pointer into the matching set
+        current->matching.insert(f);
+
+        // Handle the next character
+        if (current->next.find(c) == current->next.end()) {
+            current->next[c] = new FileTrieNode(c);
+        }
+        current = current->next[c];
+    }
 }
 
 // Searches for files with a given prefix
-std::unordered_set<File*> FileTrie::getFilesWithPrefix(const std::string& prefix) const {
-    std::unordered_set<File*> result;
+std::unordered_set<File*> FileTrie::getFilesWithPrefix(const std::string& prefix) const 
+{
+    FileTrieNode* current = head; // Start at the root
+    std::string lowercasePrefix = prefix;
 
-    // Convert the prefix to lowercase for case-insensitive matching
-    std::string lowerPrefix = prefix;
-    for (auto& c : lowerPrefix) {
-        c = std::tolower(c);
-    }
+    // Convert prefix to lowercase for case-insensitive search
+    for (char& c : lowercasePrefix) c = std::tolower(c);
 
-    // Traverse the trie to find the node corresponding to the last character of the prefix
-    FileTrieNode* currentNode = head;
-    for (char c : lowerPrefix) {
-        // If the node doesn't exist, return an empty result
-        if (currentNode->next.find(c) == currentNode->next.end()) {
-            return result;
+    for (char c : lowercasePrefix) {
+        // Check if the character exists in the current node's next map
+        if (current->next.find(c) == current->next.end()) {
+            return {}; // Return an empty set if the prefix doesn't exist
         }
-        
-        // Move to the child node
-        currentNode = currentNode->next[c];
+        current = current->next[c]; // Move to the next node
     }
 
-    // At this point, currentNode is the node corresponding to the last character of the prefix
-    // All files starting with this prefix are in currentNode->matching
-    result = currentNode->matching;
-    return result;
+    // Return all files matching the prefix
+    return current->matching;
 }
 
 // Destructor: Clean up the dynamically allocated memory
 FileTrie::~FileTrie() {
-    // Use a helper function to recursively delete all nodes
-    std::function<void(FileTrieNode*)> deleteNode = [&](FileTrieNode* node) {
-        for (auto& child : node->next) {
-            deleteNode(child.second);  // Recursively delete child nodes
+    std::function<void(FileTrieNode*)> deleteTrie = [&](FileTrieNode* node) {
+        for (auto& pair : node->next) {
+            deleteTrie(pair.second);
         }
-        delete node;  // Delete the current node
+        delete node;
     };
-
-    deleteNode(head);  // Start deletion from the root node
+    deleteTrie(head);
 }
